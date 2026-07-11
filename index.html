@@ -210,24 +210,39 @@
             width: 0%;
         }
 
-        /* --- Scroll-down toast --- */
+        /* --- Scroll-down hint (nice) --- */
         #scroll-toast {
             position: fixed;
-            bottom: 30px;
+            bottom: 34px;
             left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.75);
+            transform: translateX(-50%) translateY(20px);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: #fff;
-            padding: 10px 24px;
-            border-radius: 10px;
-            font-size: 1em;
+            padding: 14px 30px;
+            border-radius: 40px;
+            font-size: 1.15em;
+            font-weight: 700;
             z-index: 30000;
             opacity: 0;
-            transition: opacity 0.5s;
+            transition: opacity 0.45s, transform 0.45s;
             pointer-events: none;
             direction: rtl;
+            box-shadow: 0 8px 30px rgba(102,126,234,0.55);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            white-space: nowrap;
         }
-        #scroll-toast.show { opacity: 1; }
+        #scroll-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        #scroll-toast .arrow {
+            display: inline-block;
+            font-size: 1.25em;
+            animation: bobDown 1.1s ease-in-out infinite;
+        }
+        @keyframes bobDown {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(5px); }
+        }
     </style>
 </head>
 <body>
@@ -261,8 +276,8 @@
     </video>
 </div>
 
-<!-- Scroll-down toast -->
-<div id="scroll-toast">גללו למטה בעמוד</div>
+<!-- Scroll-down hint -->
+<div id="scroll-toast"><span class="arrow">👇</span><span>גללו מעט מטה בעמוד כדי לראות את התוכן</span></div>
 
 <!-- Progress bar -->
 <div id="progress-bar"></div>
@@ -280,11 +295,13 @@
     // ==========================================
     // Scroll-down toast
     // ==========================================
+    var scrollToastTimer = null;
     function showScrollToast() {
         scrollToast.classList.add('show');
-        setTimeout(function() {
+        if (scrollToastTimer) clearTimeout(scrollToastTimer);
+        scrollToastTimer = setTimeout(function() {
             scrollToast.classList.remove('show');
-        }, 3000);
+        }, 5000);
     }
 
     // ==========================================
@@ -435,8 +452,14 @@
                     try {
                         moodleWin.location.href = nav.url;
                         if (nav.scroll) {
-                            trySlowScroll(moodleWin, nav.scrollBack);
-                            showScrollToast();
+                            var isMoodle = nav.url.indexOf('opal.openu.ac.il') !== -1;
+                            if (isMoodle) {
+                                // Moodle is cross-site -> can't auto-scroll; show the nice hint
+                                showScrollToast();
+                            } else {
+                                // github page = same site -> actually auto-scroll it
+                                trySlowScroll(moodleWin, nav.scrollBack);
+                            }
                         }
                     } catch(e) {}
                 }
