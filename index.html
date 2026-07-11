@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>ברוכים הבאים - אתר הקורס המשודרג 20218</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            background: #fff;
+        }
+
+        /* --- Background iframe (course map) --- */
+        #bg-iframe {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%; height: 100%;
+            border: none;
+            z-index: 0;
+        }
+
+        /* --- Floating avatar --- */
+        .draggable-video-container {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 10000;
+            cursor: move;
+            transition: box-shadow 0.2s;
+        }
+        .draggable-video-container:hover {
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+        .draggable-video-container video {
+            width: 250px;
+            border-radius: 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            border: 3px solid #fff;
+            display: block;
+        }
+        .drag-hint {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 5px;
+            font-size: 0.7em;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .draggable-video-container:hover .drag-hint {
+            opacity: 1;
+        }
+
+        /* --- Teaser overlay (before click) --- */
+        #teaser-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.25);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 14px;
+            cursor: pointer;
+            z-index: 10;
+            transition: opacity 0.5s;
+        }
+        #teaser-overlay .pulse-ring {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid rgba(255,255,255,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 1.8s ease-in-out infinite;
+            position: relative;
+        }
+        #teaser-overlay .pulse-ring::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.4);
+            animation: ripple 1.8s ease-out infinite;
+        }
+        #teaser-overlay .play-icon {
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 12px 0 12px 20px;
+            border-color: transparent transparent transparent #fff;
+            margin-left: 4px;
+        }
+        #teaser-overlay .teaser-text {
+            color: #fff;
+            font-size: 14px;
+            margin-top: 8px;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+            animation: fadeText 2.5s ease-in-out infinite;
+            text-align: center;
+            direction: rtl;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,0.4); }
+            50% { transform: scale(1.08); box-shadow: 0 0 20px 8px rgba(255,255,255,0.15); }
+        }
+        @keyframes ripple {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
+        @keyframes fadeText {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        .draggable-video-container.waiting {
+            animation: bounce 2s ease-in-out infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+
+        /* --- Pause overlay --- */
+        .pause-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 20000;
+            justify-content: center;
+            align-items: center;
+        }
+        .pause-overlay.active { display: flex; }
+        .pause-popup {
+            background: white;
+            padding: 30px 40px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 500px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            animation: popIn 0.3s ease-out;
+        }
+        @keyframes popIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .pause-popup h3 {
+            color: #2c3e50;
+            margin-top: 0;
+            font-size: 1.3em;
+            margin-bottom: 15px;
+        }
+        .pause-popup .link-btn {
+            display: inline-block;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 1.15em;
+            margin: 10px 5px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102,126,234,0.4);
+            animation: glowPulse 2s ease-in-out infinite;
+            cursor: pointer;
+            border: none;
+        }
+        .pause-popup .link-btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 8px 25px rgba(102,126,234,0.6);
+        }
+        @keyframes glowPulse {
+            0%, 100% { box-shadow: 0 4px 15px rgba(102,126,234,0.4); }
+            50% { box-shadow: 0 4px 25px rgba(102,126,234,0.7); }
+        }
+        .pause-popup .continue-btn {
+            display: none;
+            padding: 10px 20px;
+            background: #95a5a6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9em;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.2s;
+        }
+        .pause-popup .continue-btn.visible { display: inline-block; }
+        .pause-popup .continue-btn:hover { background: #7f8c8d; }
+
+        /* --- Progress bar --- */
+        #progress-bar {
+            position: fixed;
+            bottom: 0; left: 0;
+            height: 4px;
+            background: #6366f1;
+            z-index: 99999;
+            transition: width 0.3s;
+            width: 0%;
+        }
+
+        /* --- Scroll-down toast --- */
+        #scroll-toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.75);
+            color: #fff;
+            padding: 10px 24px;
+            border-radius: 10px;
+            font-size: 1em;
+            z-index: 30000;
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+            direction: rtl;
+        }
+        #scroll-toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+
+<!-- Background: course map -->
+<iframe id="bg-iframe"
+        src="https://shir-openu.github.io/COURSE_MAP_20218/"
+        sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+
+<!-- Pause overlay (first link — opens the course tab) -->
+<div class="pause-overlay" id="pauseOverlay1">
+    <div class="pause-popup">
+        <h3>מפת האתר</h3>
+        <button class="link-btn" onclick="openMoodleAndResume('https://shir-openu.github.io/COURSE_MAP_20218/')">פתחו את מפת האתר</button>
+        <br>
+        <button class="continue-btn" id="continueBtn1" onclick="continueVideo()">המשיכו לצפות</button>
+    </div>
+</div>
+
+<!-- Floating avatar — upper-right corner -->
+<div class="draggable-video-container waiting" id="floatingVideo">
+    <div class="drag-hint">גררו אותי</div>
+    <div id="teaser-overlay">
+        <div class="pulse-ring">
+            <div class="play-icon"></div>
+        </div>
+        <div class="teaser-text">לחצו כדי להתחיל</div>
+    </div>
+    <video controls id="avatarVideo" autoplay muted loop playsinline>
+        <source src="https://shir-openu.github.io/welcome-ode-video/welcome_ode_v25.mp4" type="video/mp4">
+    </video>
+</div>
+
+<!-- Scroll-down toast -->
+<div id="scroll-toast">גללו למטה בעמוד</div>
+
+<!-- Progress bar -->
+<div id="progress-bar"></div>
+
+<script>
+    var vid = document.getElementById('avatarVideo');
+    var videoContainer = document.getElementById('floatingVideo');
+    var teaserOverlay = document.getElementById('teaser-overlay');
+    var bgIframe = document.getElementById('bg-iframe');
+    var progressBar = document.getElementById('progress-bar');
+    var scrollToast = document.getElementById('scroll-toast');
+    var moodleWin = null;
+    var started = false;
+
+    // ==========================================
+    // Scroll-down toast
+    // ==========================================
+    function showScrollToast() {
+        scrollToast.classList.add('show');
+        setTimeout(function() {
+            scrollToast.classList.remove('show');
+        }, 3000);
+    }
+
+    // ==========================================
+    // PiP helpers
+    // ==========================================
+    function tryPiP() {
+        if (!document.pictureInPictureEnabled || document.pictureInPictureElement) return Promise.resolve();
+        return vid.requestPictureInPicture().then(function() {
+        }).catch(function(err) {
+        });
+    }
+
+    // If user exits PiP manually, re-enter on next click
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.pause-overlay')) return;
+        if (e.target.closest('#teaser-overlay')) return;
+        if (started && vid.currentTime > 0 && !vid.paused && !document.pictureInPictureElement) {
+            tryPiP();
+        }
+    });
+
+    // ==========================================
+    // Click teaser to start (sound + PiP)
+    // ==========================================
+    teaserOverlay.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (started) return;
+        started = true;
+
+        teaserOverlay.style.opacity = '0';
+        setTimeout(function() { teaserOverlay.style.display = 'none'; }, 500);
+        videoContainer.classList.remove('waiting');
+
+        vid.loop = false;
+        vid.currentTime = 0;
+        vid.muted = false;
+
+        var playPromise = vid.play();
+        if (playPromise && playPromise.then) {
+            playPromise.then(function() { tryPiP(); }).catch(function() { tryPiP(); });
+        } else {
+            tryPiP();
+        }
+    });
+
+    // ==========================================
+    // Moodle link: open in the ONE course tab.
+    // window.open is the FIRST call (user-gesture),
+    // so it is NOT blocked. Gives us moodleWin for auto-nav.
+    // ==========================================
+    function openMoodleAndResume(url) {
+        moodleWin = window.open(url, 'courseWindow');
+        vid.play().then(function() { tryPiP(); }).catch(function() {});
+        setTimeout(function() {
+            document.getElementById('pauseOverlay1').classList.remove('active');
+            scrollFirstPage();
+            showScrollToast();
+        }, 2000);
+    }
+
+    function continueVideo() {
+        document.getElementById('pauseOverlay1').classList.remove('active');
+        vid.play();
+    }
+
+    document.getElementById('pauseOverlay1').addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.classList.remove('active');
+            vid.play();
+        }
+    });
+
+    // ==========================================
+    // Timed events
+    // ==========================================
+    var pauseTriggered = false;
+    var PAUSE_AT = 10;   // first link (course map) — show the button
+
+    var autoNav = [
+        { time: 27,  url: 'https://shir-openu.github.io/PART_A_THEORY/', scroll: false, scrollBack: false, triggered: false },
+        { time: 33,  url: 'https://opal.openu.ac.il/mod/combopage/view.php?id=6974243&from=nav', scroll: false, scrollBack: false, triggered: false },
+        { time: 38,  url: 'https://opal.openu.ac.il/mod/combopage/view.php?id=6974277&from=nav', scroll: true, scrollBack: false, triggered: false },
+        { time: 41,  url: 'https://opal.openu.ac.il/mod/combopage/view.php?id=6974280&from=nav', scroll: true, scrollBack: false, triggered: false },
+        { time: 43,  url: 'https://opal.openu.ac.il/mod/combopage/view.php?id=6974276&from=nav', scroll: false, scrollBack: false, triggered: false },
+        { time: 45,  url: 'https://shir-openu.github.io/direction_field/', scroll: false, scrollBack: false, triggered: false },
+        { time: 61,  url: 'https://opal.openu.ac.il/mod/combopage/view.php?id=6974282&from=nav', scroll: true, scrollBack: false, triggered: false },
+        { time: 67,  url: 'https://shir-openu.github.io/PART_A_TECHNIQUES/', scroll: false, scrollBack: false, triggered: false },
+        { time: 78,  url: 'https://opal.openu.ac.il/mod/combopage/view.php?id=6974245&from=nav', scroll: true, scrollBack: false, triggered: false },
+        { time: 89,  url: 'https://opal.openu.ac.il/mod/combopage/view.php?id=6974276&from=nav', scroll: false, scrollBack: false, triggered: false },
+        { time: 101, url: 'https://opal.openu.ac.il/mod/combopage/view.php?id=6974387', scroll: false, scrollBack: false, triggered: false },
+        { time: 115, url: 'https://opal.openu.ac.il/mod/combopage/view.php?id=6974286&from=nav', scroll: false, scrollBack: false, triggered: false },
+        { time: 122, url: 'https://shir-openu.github.io/differential_linear_operator_sc_mul/', scroll: false, scrollBack: false, triggered: false },
+        { time: 136, url: 'https://shir-openu.github.io/differential_linear_operator_addition/', scroll: false, scrollBack: false, triggered: false },
+        { time: 160, url: 'https://opal.openu.ac.il/mod/combopage/view.php?id=6974394&from=nav', scroll: false, scrollBack: false, triggered: false },
+        { time: 166, url: 'https://opal.openu.ac.il/mod/combopage/view.php?id=6974401&from=nav', scroll: true, scrollBack: false, triggered: false },
+        { time: 178, url: 'https://shir-openu.github.io/mmn-13-Q-3/', scroll: true, scrollBack: false, triggered: false },
+        { time: 189, url: 'https://opal.openu.ac.il/mod/combopage/view.php?id=6974480&from=courseHome', scroll: true, scrollBack: false, triggered: false },
+        { time: 197, url: 'https://opal.openu.ac.il/mod/combopage/view.php?id=6974493', scroll: true, scrollBack: false, triggered: false },
+        { time: 207, url: 'https://opal.openu.ac.il/mod/combopage/view.php?id=6974435&from=nav', scroll: false, scrollBack: false, triggered: false },
+        { time: 213, url: 'https://opal.openu.ac.il/mod/combopage/view.php?id=6974459&from=nav', scroll: false, scrollBack: false, triggered: false }
+    ];
+
+    function trySlowScroll(win, scrollBack) {
+        if (!win || win.closed) return;
+        setTimeout(function() {
+            try {
+                var doc = win.document;
+                var target = scrollBack
+                    ? Math.round(doc.documentElement.scrollHeight / 2)
+                    : Math.round(doc.documentElement.scrollHeight * 0.7);
+                var pos = 0;
+                var step = Math.max(1, Math.round(target / 120));
+                var si = setInterval(function() {
+                    pos += step;
+                    if (pos >= target) {
+                        win.scrollTo(0, target);
+                        clearInterval(si);
+                    } else {
+                        win.scrollTo(0, pos);
+                    }
+                }, 40);
+            } catch(e) {}
+        }, 2000);
+    }
+
+    vid.addEventListener('timeupdate', function() {
+        if (!started) return;
+        var t = vid.currentTime;
+        var duration = vid.duration || 228;
+        progressBar.style.width = ((t / duration) * 100) + '%';
+
+        // --- Single pause at first-link time -> show the button ---
+        if (!pauseTriggered && t >= PAUSE_AT) {
+            pauseTriggered = true;
+            vid.pause();
+            document.getElementById('pauseOverlay1').classList.add('active');
+            setTimeout(function() {
+                document.getElementById('continueBtn1').classList.add('visible');
+            }, 10000);
+        }
+
+        // --- Auto-navigate the one tab at scheduled times ---
+        for (var i = 0; i < autoNav.length; i++) {
+            var nav = autoNav[i];
+            if (!nav.triggered && t >= nav.time) {
+                nav.triggered = true;
+                if (moodleWin && !moodleWin.closed) {
+                    try {
+                        moodleWin.location.href = nav.url;
+                        if (nav.scroll) {
+                            trySlowScroll(moodleWin, nav.scrollBack);
+                            showScrollToast();
+                        }
+                    } catch(e) {}
+                }
+            }
+        }
+    });
+
+    function scrollFirstPage() {
+        trySlowScroll(moodleWin, false);
+    }
+
+    vid.addEventListener('seeking', function() {
+        var t = vid.currentTime;
+        if (t < PAUSE_AT - 1) { pauseTriggered = false; }
+        for (var i = 0; i < autoNav.length; i++) {
+            if (t < autoNav[i].time - 1) {
+                autoNav[i].triggered = false;
+            }
+        }
+    });
+
+    // ==========================================
+    // Dragging
+    // ==========================================
+    var isDragging = false;
+    var offsetX, offsetY;
+
+    videoContainer.addEventListener('mousedown', function(e) {
+        if (e.target.tagName === 'VIDEO') return;
+        isDragging = true;
+        videoContainer.style.transition = 'none';
+        videoContainer.classList.remove('waiting');
+        offsetX = e.clientX - videoContainer.offsetLeft;
+        offsetY = e.clientY - videoContainer.offsetTop;
+        videoContainer.style.cursor = 'grabbing';
+    });
+
+    document.addEventListener('mousemove', function(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+        videoContainer.style.left = (e.clientX - offsetX) + 'px';
+        videoContainer.style.top = (e.clientY - offsetY) + 'px';
+        videoContainer.style.bottom = 'auto';
+        videoContainer.style.right = 'auto';
+    });
+
+    document.addEventListener('mouseup', function() {
+        isDragging = false;
+        videoContainer.style.cursor = 'move';
+    });
+
+    videoContainer.addEventListener('touchstart', function(e) {
+        if (e.target.tagName === 'VIDEO') return;
+        isDragging = true;
+        videoContainer.style.transition = 'none';
+        videoContainer.classList.remove('waiting');
+        var touch = e.touches[0];
+        offsetX = touch.clientX - videoContainer.offsetLeft;
+        offsetY = touch.clientY - videoContainer.offsetTop;
+    });
+
+    document.addEventListener('touchmove', function(e) {
+        if (!isDragging) return;
+        var touch = e.touches[0];
+        videoContainer.style.left = (touch.clientX - offsetX) + 'px';
+        videoContainer.style.top = (touch.clientY - offsetY) + 'px';
+        videoContainer.style.bottom = 'auto';
+        videoContainer.style.right = 'auto';
+    });
+
+    document.addEventListener('touchend', function() {
+        isDragging = false;
+    });
+</script>
+</body>
+</html>
